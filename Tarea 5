@@ -1,0 +1,89 @@
+# Importar las librerías necesarias
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, roc_curve, roc_auc_score
+
+# Cargar el dataset
+df = pd.read_csv('titanic.csv')
+
+# Primer vistazo a los datos
+print(df.head())
+print(df.info())
+print(df.describe())
+
+# Análisis Exploratorio de Datos (EDA)
+# Visualización de la distribución de las variables
+sns.countplot(x='Survived', data=df)
+plt.title('Distribución de Supervivencia')
+plt.show()
+
+# Visualización de la correlación entre las variables
+correlation = df.corr()
+sns.heatmap(correlation, annot=True, cmap='coolwarm')
+plt.title('Mapa de Calor de Correlaciones')
+plt.show()
+
+# Preprocesamiento de los Datos
+# Tratamiento de valores faltantes
+df['Age'].fillna(df['Age'].median(), inplace=True)
+df['Embarked'].fillna(df['Embarked'].mode()[0], inplace=True)
+df.drop(columns=['Cabin', 'Ticket'], inplace=True)
+
+# Conversión de variables categóricas a numéricas
+df = pd.get_dummies(df, columns=['Sex', 'Embarked'], drop_first=True)
+
+# Verificación de datos faltantes
+print(df.isnull().sum())
+
+# Selección de Características
+# Selección de características usando correlación
+correlation_target = correlation['Survived'].abs().sort_values(ascending=False)
+print(correlation_target)
+
+# División del Dataset
+X = df.drop(columns=['Survived', 'Name', 'PassengerId'])
+y = df['Survived']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Entrenamiento del Modelo
+model = LogisticRegression(max_iter=200)
+model.fit(X_train, y_train)
+
+# Predicciones
+y_pred = model.predict(X_test)
+
+# Evaluación del Modelo
+# Matriz de confusión
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues')
+plt.title('Matriz de Confusión')
+plt.show()
+
+# Reporte de clasificación
+print(classification_report(y_test, y_pred))
+
+# Precisión del modelo
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Precisión: {accuracy:.2f}')
+
+# Visualización de Resultados
+# Curva ROC
+y_prob = model.predict_proba(X_test)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_prob)
+roc_auc = roc_auc_score(y_test, y_prob)
+
+plt.figure()
+plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'Curva ROC (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('Tasa de Falsos Positivos')
+plt.ylabel('Tasa de Verdaderos Positivos')
+plt.title('Curva ROC')
+plt.legend(loc='lower right')
+plt.show()
